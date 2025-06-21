@@ -51,9 +51,13 @@ const Dashboard = () => {
       <div className="p-6 text-center">
         <p className="text-gray-600">No data available.</p>
         <p>Please analyze a user to see results.</p>
+        <p className="mt-2 text-sm text-gray-500">
+          Note: Currently, only the top 12 posts are available for analysis.
+        </p>
       </div>
     );
   }
+
 
   const allPosts = Array.isArray(userData.posts)
     ? [...userData.posts].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
