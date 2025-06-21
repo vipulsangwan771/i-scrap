@@ -55,7 +55,7 @@ function Layout() {
         });
 
         const data = await response.json();
-console.log("check re:", data)
+        console.log("check re:", data)
         if (!response.ok) {
           throw Object.assign(new Error(data.error || 'Failed to analyze user'), {
             status: response.status,
@@ -137,7 +137,7 @@ console.log("check re:", data)
           } md:translate-x-0 transition-transform duration-300 ease-in-out`}
       >
         <div className="flex items-center justify-between p-5 border-b">
-          <h1 className="text-2xl font-extrabold text-blue-600">I_SCRAPER</h1>
+          <h1 className="text-2xl font-extrabold text-center text-blue-600">🌐 I-SCRAPER</h1>
           <button
             aria-label="Close sidebar"
             className="md:hidden p-1 rounded hover:bg-gray-200"
@@ -282,7 +282,7 @@ console.log("check re:", data)
         </div>
       )}
 
-      <div className="flex-1 md:ml-64 w-full">
+      <div className="flex-1 md:ml-64 w-full flex flex-col min-h-screen">
         <header className="sticky top-0 z-30 bg-white shadow-sm flex justify-between items-center p-4">
           <div className="flex items-center space-x-4">
             <button
@@ -299,12 +299,17 @@ console.log("check re:", data)
           </h2>
         </header>
 
-        <main className="min-h-screen bg-gray-100 p-6">
+        <main className="flex-grow bg-gray-100 p-6">
           <div className="max-w-screen-xl mx-auto">
             <Outlet />
           </div>
         </main>
+
+        <footer className="sticky bottom-0 z-20 bg-white shadow-inner p-4 text-center text-sm text-gray-600">
+          © {new Date().getFullYear()} 🌐. All rights reserved.
+        </footer>
       </div>
+
     </div>
   );
 }
