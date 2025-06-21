@@ -47,7 +47,7 @@ function Layout() {
 
     while (retryCount < maxRetries) {
       try {
-        const response = await fetch('http://localhost:5000/api/analyze-user', {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/analyze-user`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: trimmedUsername }),
@@ -137,7 +137,7 @@ console.log("check re:", data)
           } md:translate-x-0 transition-transform duration-300 ease-in-out`}
       >
         <div className="flex items-center justify-between p-5 border-b">
-          <h1 className="text-2xl font-extrabold text-blue-600">Hey Visuals</h1>
+          <h1 className="text-2xl font-extrabold text-blue-600">I_SCRAPER</h1>
           <button
             aria-label="Close sidebar"
             className="md:hidden p-1 rounded hover:bg-gray-200"
