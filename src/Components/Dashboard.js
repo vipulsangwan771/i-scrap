@@ -14,7 +14,7 @@ const Dashboard = () => {
       console.log('Collaborative posts:', userData.posts?.filter(post => post.is_collaborative).length || 0);
       setProfilePic(
         userData.profile_pic_path
-          ? `http://localhost:5000${userData.profile_pic_path}`
+          ? `${process.env.REACT_APP_BACKEND_URL}${userData.profile_pic_path}`
           : userData.profile_pic_url || '/default-profile-pic.jpg'
       );
       setDisplayedPosts(10); // Reset to 10 posts when new user data is loaded
@@ -98,7 +98,7 @@ const Dashboard = () => {
     if (post.thumbnail_path) {
       return (
         <img
-          src={`http://localhost:5000${post.thumbnail_path}`}
+          src={`${process.env.REACT_APP_BACKEND_URL}${post.thumbnail_path}`}
           alt={`Post ${index + 1}`}
           className={`${sizeClass} object-cover`}
           loading="lazy"
@@ -108,7 +108,7 @@ const Dashboard = () => {
     } else if (post.is_video && post.video_url) {
       return (
         <video
-          src={`http://localhost:5000${post.video_url}`}
+          src={`${process.env.REACT_APP_BACKEND_URL}${post.video_url}`}
           className={`${sizeClass} object-cover`}
           muted
           loop
