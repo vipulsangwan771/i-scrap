@@ -5,24 +5,26 @@ const Dashboard = () => {
   const { appState } = useContext(AppContext);
   const { userData, isLoading, errors } = appState;
   const [profilePic, setProfilePic] = useState('/default-profile-pic.jpg');
-  const [displayedPosts, setDisplayedPosts] = useState(10); // Start with 10 posts
+  const [displayedPosts, setDisplayedPosts] = useState(10);
 
   useEffect(() => {
+    console.log('App state:', appState);
     if (userData) {
       console.log('Dashboard received user data:', JSON.stringify(userData, null, 2));
       console.log('Total posts received:', userData.posts?.length || 0);
       console.log('Collaborative posts:', userData.posts?.filter(post => post.is_collaborative).length || 0);
+      console.log('Backend URL:', process.env.REACT_APP_BACKEND_URL);
       setProfilePic(
         userData.profile_pic_path
           ? `${process.env.REACT_APP_BACKEND_URL}${userData.profile_pic_path}`
           : userData.profile_pic_url || '/default-profile-pic.jpg'
       );
-      setDisplayedPosts(10); // Reset to 10 posts when new user data is loaded
+      setDisplayedPosts(10);
     }
   }, [userData]);
 
   const loadMorePosts = () => {
-    setDisplayedPosts(prev => prev + 10); // Load next 10 posts
+    setDisplayedPosts(prev => prev + 10);
   };
 
   if (isLoading) {
@@ -37,7 +39,8 @@ const Dashboard = () => {
     );
   }
 
-  if (errors.userData) {
+  // Only show error if no userData
+  if (errors.userData && !userData) {
     return (
       <div className="p-6 text-center">
         <p className="text-red-600">{errors.userData}</p>
@@ -58,11 +61,9 @@ const Dashboard = () => {
     );
   }
 
-
   const allPosts = Array.isArray(userData.posts)
     ? [...userData.posts].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
     : [];
-
   const latestThreePosts = [...allPosts].slice(0, 3);
   const collaborativePosts = allPosts.filter(post => post.is_collaborative);
   const hasCollaborativePosts = collaborativePosts.length > 0;
@@ -183,9 +184,7 @@ const Dashboard = () => {
 
         {userData.is_private && (
           <div className="mt-6">
-            <p className="text-red-600">
-              This account is private. Posts and additional data cannot be accessed.
-            </p>
+            <p className="text-red-600">{userData.message}</p>
           </div>
         )}
 
@@ -194,14 +193,14 @@ const Dashboard = () => {
             {latestThreePosts.length > 0 && (
               <div className="mt-6">
                 <h3 className="text-xl font-semibold text-blue-600 mb-4">Recent Posts</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 ">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {latestThreePosts.map((post, index) => (
                     <a
                       key={index}
                       href={post.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow bg-gray-100  "
+                      className="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow bg-gray-100"
                     >
                       {renderMedia(post, index)}
                       <div className="p-2 bg-gray-100">
@@ -235,7 +234,7 @@ const Dashboard = () => {
                       href={post.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow bg-gray-100 "
+                      className="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow bg-gray-100"
                     >
                       {renderMedia(post, index)}
                       <div className="p-2 bg-gray-100">
@@ -266,7 +265,7 @@ const Dashboard = () => {
                 <h3 className="text-xl font-semibold text-blue-600 mb-4">Collaborative Posts</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {collaborativePosts.map((post, index) => (
-                    <div key={index} className="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow  bg-gray-100">
+                    <div key={index} className="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow bg-gray-100">
                       <a href={post.url} target="_blank" rel="noopener noreferrer">
                         {renderMedia(post, index)}
                       </a>
@@ -338,7 +337,6 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
-
           </>
         )}
       </div>

@@ -1,7 +1,8 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { Menu, X, Home, Instagram } from 'lucide-react';
 import { AppContext } from '../App';
+import { debounce } from 'lodash';
 
 function Layout() {
   const { appState, updateState } = useContext(AppContext);
@@ -11,6 +12,7 @@ function Layout() {
   const [error, setError] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
   const [retryAfter, setRetryAfter] = useState(0);
+  const [isFetching, setIsFetching] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -28,22 +30,28 @@ function Layout() {
     }
   }, [retryAfter]);
 
-  const handleAnalyzeUser = async (e, passedUsername = null) => {
-    if (e && e.preventDefault) e.preventDefault();
+  const analyzeUser = useCallback(async (usernameToAnalyze) => {
+    if (isFetching) {
+      console.log('Fetch already in progress, ignoring request');
+      return;
+    }
 
-    const actualUsername = passedUsername || username;
+    setIsFetching(true);
+    setError(null); // Clear previous errors
     updateState({ isLoading: true, errors: {} });
-    setError(null);
 
-    const trimmedUsername = actualUsername.trim();
+    const trimmedUsername = usernameToAnalyze.trim();
     if (!trimmedUsername) {
       setError('Please enter a valid Instagram username');
       updateState({ isLoading: false });
+      setIsFetching(false);
       return;
     }
 
     const maxRetries = 3;
     let retryCount = 0;
+
+    console.log('Attempting to fetch:', `${process.env.REACT_APP_BACKEND_URL}/api/analyze-user`, 'with username:', trimmedUsername);
 
     while (retryCount < maxRetries) {
       try {
@@ -51,11 +59,12 @@ function Layout() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: trimmedUsername }),
-          signal: AbortSignal.timeout(60000),
+          signal: AbortSignal.timeout(90000),
         });
 
         const data = await response.json();
-        console.log("check re:", data)
+        console.log('Fetch response:', data, 'Status:', response.status, 'Headers:', Object.fromEntries(response.headers));
+
         if (!response.ok) {
           throw Object.assign(new Error(data.error || 'Failed to analyze user'), {
             status: response.status,
@@ -66,20 +75,19 @@ function Layout() {
         const newState = {
           isLoading: false,
           errors: {},
-          userData: data, // Store the API response directly
+          userData: data,
         };
 
         const updatedUsers = [...new Set([trimmedUsername, ...recentUsers])].slice(0, 5);
         setRecentUsers(updatedUsers);
         localStorage.setItem('recentUsers', JSON.stringify(updatedUsers));
 
-        if (!passedUsername) {
-          setUsername('');
-          setIsModalOpen(false);
-        }
-
+        setUsername('');
+        setIsModalOpen(false);
+        setError(null);
         updateState(newState);
         navigate('/');
+        setIsFetching(false);
         return;
       } catch (err) {
         retryCount++;
@@ -87,10 +95,12 @@ function Layout() {
         const status = err.status;
         const retryAfterHeader = err.retryAfter ? parseInt(err.retryAfter) : null;
 
+        console.log('Fetch error:', err.message, 'Status:', status, 'Retry-After:', retryAfterHeader);
+
         if (err.name === 'TimeoutError' || err.message.includes('Failed to fetch')) {
           errorMessage = `Connection to server failed. Retrying (${retryCount}/${maxRetries})...`;
           if (retryCount < maxRetries) {
-            await new Promise((resolve) => setTimeout(resolve, 3000 * retryCount));
+            await new Promise((resolve) => setTimeout(resolve, 5000 * retryCount));
             continue;
           }
           errorMessage = 'Failed to connect to the server. Please ensure the server is running and try again.';
@@ -106,27 +116,33 @@ function Layout() {
 
         setError(errorMessage);
         updateState({ isLoading: false, errors: { userData: errorMessage } });
+        setIsFetching(false);
         break;
       }
     }
+  }, [isFetching, recentUsers, updateState, navigate]);
+
+  const debouncedAnalyzeUser = useCallback(debounce(analyzeUser, 500), [analyzeUser]);
+
+  const handleAnalyzeUser = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    debouncedAnalyzeUser(username);
   };
 
-  const handleSelectUser = async (selectedUsername) => {
+  const handleSelectUser = (selectedUsername) => {
     setUsername(selectedUsername);
-    await handleAnalyzeUser(null, selectedUsername);
+    debouncedAnalyzeUser(selectedUsername);
   };
-
-  const links = [{ to: '/', label: 'Dashboard', icon: Home }];
 
   const handleDeleteUser = (userToDelete) => {
     const updatedUsers = recentUsers.filter((user) => user !== userToDelete);
     setRecentUsers(updatedUsers);
     localStorage.setItem('recentUsers', JSON.stringify(updatedUsers));
 
-    // Clear if current user is deleted
     if (username === userToDelete) {
       setUsername('');
-      updateState({ userData: null });
+      updateState({ userData: null, errors: {} });
+      setError(null);
     }
   };
 
@@ -147,7 +163,7 @@ function Layout() {
           </button>
         </div>
         <nav className="mt-8 flex flex-col space-y-1">
-          {links.map(({ to, label, icon: Icon }) => (
+          {[{ to: '/', label: 'Dashboard', icon: Home }].map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}
@@ -248,9 +264,9 @@ function Layout() {
                   <p className="text-sm text-red-600">{error}</p>
                   {error.includes('Rate limit') && retryAfter > 0 && (
                     <button
-                      onClick={handleAnalyzeUser}
+                      onClick={() => debouncedAnalyzeUser(username)}
                       className="px-2 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                      disabled={retryAfter > 0}
+                      disabled={retryAfter > 0 || isFetching}
                     >
                       Retry ({retryAfter}s)
                     </button>
@@ -271,10 +287,10 @@ function Layout() {
                 </button>
                 <button
                   type="submit"
-                  disabled={appState.isLoading || retryAfter > 0}
+                  disabled={appState.isLoading || retryAfter > 0 || isFetching}
                   className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {appState.isLoading ? 'Analyzing...' : retryAfter > 0 ? `Retry in ${retryAfter}s` : 'Analyze'}
+                  {appState.isLoading || isFetching ? 'Analyzing...' : retryAfter > 0 ? `Retry in ${retryAfter}s` : 'Analyze'}
                 </button>
               </div>
             </form>
@@ -309,7 +325,6 @@ function Layout() {
           © {new Date().getFullYear()} 🌐. All rights reserved.
         </footer>
       </div>
-
     </div>
   );
 }
